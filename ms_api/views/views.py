@@ -1,7 +1,7 @@
 from flask import request
 from flask_jwt_extended import jwt_required, create_access_token
 from flask_restful import Resource
-from models import db, User, UserSchema
+from models import db, User, UserSchema, Task, TaskSchema
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils import utils
 
@@ -34,7 +34,7 @@ class ViewLogIn(Resource):
         }
         access_token = create_access_token(identity=user_db['id'], additional_claims=claims)
         return {"message": "loing successful", "token": access_token, "id": user_db['id']}
-    
+
 class ViewCreateUser(Resource):
 
     # login
@@ -52,16 +52,16 @@ class ViewCreateUser(Resource):
         #validation for password minimal security conditions
         if not utils.password_validation(passwd1):
             return {"error": "Invalid password minimal security conditions"}, 401
-        
+
         if not utils.email_validation(email):
             return {"error": "Invalid email"}, 401
-        
+
         # validation for user
         user_db = User.query.filter_by(userName=userName, email=email).first()
         if user_db is not None:
             return {"error": "Invalid user and email, the combination already exists"}, 401
 
-        
+
         hash = generate_password_hash(passwd1)
 
         user = User(
@@ -73,4 +73,7 @@ class ViewCreateUser(Resource):
         db.session.commit()
         return {"mensaje": "User created", "info": user.id}
 
-
+class ViewTasks(Resource):
+    def get(self, id_task):
+        task_schema = TaskSchema()
+        return task_schema.dump(Task.query.get_or_404(id_task))
