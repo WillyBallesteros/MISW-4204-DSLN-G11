@@ -15,12 +15,12 @@ class ViewLogIn(Resource):
         busines_schema = UserSchema()
 
         # Retrieve user and password from request
-        userName = request.json["userName"]
+        user_name = request.json["user_name"]
         passwd = request.json["passwd"]
 
 
         # Retrieve user from database
-        user_db = busines_schema.dump(User.query.filter_by(userName=userName).first())
+        user_db = busines_schema.dump(User.query.filter_by(user_name=user_name).first())
 
         if not(user_db):
             return {"error": "User not found"}, 404
@@ -30,7 +30,7 @@ class ViewLogIn(Resource):
             return {"error": "Invalid password"}, 401
 
         claims = {
-            "name": user_db['userName']
+            "name": user_db['user_name']
         }
         access_token = create_access_token(identity=user_db['id'], additional_claims=claims)
         return {"message": "loing successful", "token": access_token, "id": user_db['id']}
@@ -40,7 +40,7 @@ class ViewCreateUser(Resource):
     # login
     def post(self):
         # Retrieve user and password from request
-        userName = request.json["userName"]
+        user_name = request.json["user_name"]
         passwd1 = request.json["passwd1"]
         passwd2 = request.json["passwd2"]
         email = request.json["email"]
@@ -57,7 +57,7 @@ class ViewCreateUser(Resource):
             return {"error": "Invalid email"}, 401
 
         # validation for user
-        user_db = User.query.filter_by(userName=userName, email=email).first()
+        user_db = User.query.filter_by(user_name=user_name, email=email).first()
         if user_db is not None:
             return {"error": "Invalid user and email, the combination already exists"}, 401
 
@@ -65,7 +65,7 @@ class ViewCreateUser(Resource):
         hash = generate_password_hash(passwd1)
 
         user = User(
-            userName = userName,
+            user_name = user_name,
             password =  hash,
             email= email
         )
