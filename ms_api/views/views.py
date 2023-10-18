@@ -22,7 +22,7 @@ class ViewLogIn(Resource):
         # Retrieve user from database
         user_db = busines_schema.dump(User.query.filter_by(userName=userName).first())
 
-        if user_db is None:
+        if not(user_db):
             return {"error": "User not found"}, 404
 
         # Verify password using Passlib
