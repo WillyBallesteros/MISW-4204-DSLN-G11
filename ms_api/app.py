@@ -3,7 +3,7 @@ from flask_jwt_extended import JWTManager
 from flask_restful import Api
 from flask_cors import CORS
 from models import db
-from views.views import ViewCreateUser, ViewLogIn, ViewTasks, ViewTask
+from views.views import ViewCreateUser, ViewLogIn, ViewTasks, ViewDownloadVideo, ViewTask
 from services import DATABASE_URL
 
 
@@ -22,8 +22,9 @@ cors = CORS(app)
 api = Api(app)
 api.add_resource(ViewCreateUser, '/api/auth/signup')
 api.add_resource(ViewLogIn, '/api/auth/login')
+api.add_resource(ViewDownloadVideo, '/api/download/<string:uuid>/<string:resource>')
 api.add_resource(ViewTasks, '/api/tasks')
-api.add_resource(ViewTask, '/api/tasks/<int:id_task>')
+api.add_resource(ViewTask, '/api/tasks/<int:task_id>')
 
 if __name__ == '__main__':
     app.run(debug=True)

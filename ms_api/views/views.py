@@ -1,7 +1,7 @@
 import datetime
 import os
 import uuid
-from flask import request
+from flask import request, send_file
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from flask_restful import Resource
 from . import DESTINATION_FILEPATH, SOURCE_FILEPATH
@@ -9,11 +9,11 @@ from models import db, User, UserSchema, Task, TaskSchema
 from services import video
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils import utils
+import os
 
 
 
 class ViewLogIn(Resource):
-
     # login
     def post(self):
 
@@ -41,8 +41,7 @@ class ViewLogIn(Resource):
         return {"message": "loing successful", "token": access_token, "id": user_db['id']}
 
 class ViewCreateUser(Resource):
-
-    # login
+    # signup
     def post(self):
         # Retrieve user and password from request
         user_name = request.json["user_name"]
@@ -80,13 +79,18 @@ class ViewCreateUser(Resource):
 
 class ViewTask(Resource):
     @jwt_required()
-    def get(self, id_task):
+    def get(self, task_id):
         task_schema = TaskSchema()
-        return task_schema.dump(Task.query.get_or_404(id_task))
+        task = task_schema.dump(Task.query.get_or_404(task_id))
+
+        task['origin_download_link']= '/api/download/'+ task['uuid']+"/origin"
+        task['destination_download_link']= '/api/download/'+ task['uuid']+"/destination"
+        return task
+    
     @jwt_required()
-    def delete(self, id_task):
+    def delete(self, task_id):
         #Delete task
-        task = Task.query.filter_by(id=id_task).first()
+        task = Task.query.filter_by(id=task_id).first()
         if task is None:
             return 'task not found', 404
         
@@ -111,7 +115,7 @@ class ViewTasks(Resource):
         filename = file.filename
         if filename == '':
             return 'Filename cannot be empty', 400
-        
+
         sourceType = utils.get_extension(filename)
 
         if not video.validate_format(sourceType):
@@ -121,12 +125,12 @@ class ViewTasks(Resource):
         destinationType = request.form.get("newFormat")
         if destinationType is None:
             return 'newFormat cannot be empty', 400
-        
+
         destinationType = destinationType.upper()
 
         if sourceType == destinationType:
             return 'newFormat cannot be equal to file format', 400
-        
+
         if not video.validate_format(destinationType):
             return 'newFormat must be MP4, WEBM, AVI, MPEG or WMV', 400
 
@@ -152,5 +156,25 @@ class ViewTasks(Resource):
         )
         db.session.add(task)
         db.session.commit()
-        return {"message": "Task created", "info": task.id}  
+        return {"message": "Task created", "info": task.id} 
+
+class ViewDownloadVideo(Resource):
+    # @jwt_required()
+    def get(self, uuid, resource):
+        # search task within DB
+        task_schema = TaskSchema()
+        task_db = task_schema.dump(Task.query.filter_by(uuid=uuid).first())
+
+        if not(task_db):
+            return {"error": "Task not found"}, 404
+        
+        # Send the file to download
+        if resource == 'origin':
+            return send_file(task_db['source_file_system'], as_attachment=True)
+        elif resource == 'destination':
+            if task_db['status'] != "completed":
+                return {"error": "Video processing is not yet completed"}, 400
+            return send_file(task_db['destination_file_system'], as_attachment=True)
+        else :
+            return 'resource invalid', 404 
     
