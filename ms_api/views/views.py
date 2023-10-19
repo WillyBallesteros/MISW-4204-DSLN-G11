@@ -81,9 +81,13 @@ class ViewCreateUser(Resource):
 
 class ViewTasks(Resource):
     @jwt_required()
-    def get(self, id_task):
+    def get(self, task_id):
         task_schema = TaskSchema()
-        return task_schema.dump(Task.query.get_or_404(id_task))
+        task = task_schema.dump(Task.query.get_or_404(task_id))
+
+        task['origin_download_link']= '/api/download/'+ task['uuid']+"/origin"
+        task['destionation_download_link']= '/api/download/'+ task['uuid']+"/destination"
+        return task
 
     @jwt_required()
     def post(self):
@@ -150,13 +154,22 @@ class ViewTasks(Resource):
         return {"message": "Task deleted"}
 class ViewDownloadVideo(Resource):
     # @jwt_required()
-    def get(self, task_id):
+    def get(self, uuid, resource):
         # search task within DB
-        task = Task.query.get_or_404(task_id)
+        task_schema = TaskSchema()
+        task_db = task_schema.dump(Task.query.filter_by(uuid=uuid).first())
 
+        if not(task_db):
+            return {"error": "Task not found"}, 404
+        
         # Verify if the video is completed
-        if task.status != "completed":
+        if task_db['status'] != "completed":
             return {"error": "Video processing is not yet completed"}, 400
 
         # Send the file to download
-        return send_from_directory(task.destination_file_system, task.file_name, as_attachment=True)
+        if resource == 'origin':
+            return send_from_directory(task_db['source_file_system'], task_db['file_name'], as_attachment=True)
+        elif resource == 'destination':
+            return send_from_directory(task_db['destination_file_system'], task_db['file_name'], as_attachment=True)
+        else :
+            return 'resource invalid', 404
