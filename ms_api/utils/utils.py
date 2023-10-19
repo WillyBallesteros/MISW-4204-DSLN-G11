@@ -14,3 +14,9 @@ def password_validation(passwd):
 def email_validation(email):
     pattern = (r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
     return bool(re.match(pattern, email))
+
+def get_extension(filename):
+    parts = filename.split('.')
+    if len(parts) > 1:
+        return parts[-1].upper()
+    return None
