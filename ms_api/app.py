@@ -22,8 +22,8 @@ cors = CORS(app)
 api = Api(app)
 api.add_resource(ViewCreateUser, '/api/auth/signup')
 api.add_resource(ViewLogIn, '/api/auth/login')
-api.add_resource(ViewDownloadVideo, '/api/download/<int:task_id>')
-api.add_resource(ViewTasks, '/api/auth/tasks')
+api.add_resource(ViewDownloadVideo, '/api/download/<string:uuid>/<string:resource>')
+api.add_resource(ViewTasks, '/api/tasks/<int:task_id>')
 
 if __name__ == '__main__':
     app.run(debug=True)
