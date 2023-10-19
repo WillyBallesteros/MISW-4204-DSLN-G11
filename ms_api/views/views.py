@@ -1,9 +1,10 @@
-from flask import request
+from flask import request, send_from_directory
 from flask_jwt_extended import jwt_required, create_access_token
 from flask_restful import Resource
 from models import db, User, UserSchema, Task, TaskSchema
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils import utils
+import os
 
 
 
@@ -77,3 +78,16 @@ class ViewTasks(Resource):
     def get(self, id_task):
         task_schema = TaskSchema()
         return task_schema.dump(Task.query.get_or_404(id_task))
+
+class ViewDownloadVideo(Resource):
+    # @jwt_required()
+    def get(self, task_id):
+        # search task within DB
+        task = Task.query.get_or_404(task_id)
+
+        # Verify if the video is completed
+        if task.status != "completed":
+            return {"error": "Video processing is not yet completed"}, 400
+
+        # Send the file to download
+        return send_from_directory(task.destination_file_system, task.file_name, as_attachment=True)
