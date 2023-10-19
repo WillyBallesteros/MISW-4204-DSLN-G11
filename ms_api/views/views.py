@@ -2,7 +2,7 @@ import datetime
 import os
 import uuid
 from flask import request
-from flask_jwt_extended import jwt_required, create_access_token
+from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from flask_restful import Resource
 from . import DESTINATION_FILEPATH, SOURCE_FILEPATH
 from models import db, User, UserSchema, Task, TaskSchema
@@ -78,12 +78,30 @@ class ViewCreateUser(Resource):
         db.session.commit()
         return {"message": "User created", "info": user.id}
 
-class ViewTasks(Resource):
+class ViewTask(Resource):
     @jwt_required()
     def get(self, id_task):
         task_schema = TaskSchema()
         return task_schema.dump(Task.query.get_or_404(id_task))
+    @jwt_required()
+    def delete(self, id_task):
+        #Delete task
+        task = Task.query.filter_by(id=id_task).first()
+        if task is None:
+            return 'task not found', 404
+        
+        if os.path.exists(task.source_file_system):
+            os.remove(task.source_file_system)
+        
+        if os.path.exists(task.destination_file_system):
+            os.remove(task.destination_file_system)
+        
+        db.session.delete(task)
+        db.session.commit()
+
+        return {"message": "Task was deleted"}
     
+class ViewTasks(Resource):
     @jwt_required()
     def post(self):
         #Check filename
@@ -97,11 +115,11 @@ class ViewTasks(Resource):
         sourceType = utils.get_extension(filename)
 
         if not video.validate_format(sourceType):
-            return 'fileName type cannot be support', 400
+            return 'fileName file extensión must be be MP4, WEBM, AVI, MPEG or WMV', 400
         
         #Check destination type
-        destinationType = request.json["newFormat"]
-        if format is None:
+        destinationType = request.form.get("newFormat")
+        if destinationType is None:
             return 'newFormat cannot be empty', 400
         
         destinationType = destinationType.upper()
@@ -110,18 +128,18 @@ class ViewTasks(Resource):
             return 'newFormat cannot be equal to file format', 400
         
         if not video.validate_format(destinationType):
-            return 'newFormat cannot be support', 400
-                
-        sourceFileSystem = os.path.join(SOURCE_FILEPATH, file.filename)
-        destinationFileSystem = os.path.join(DESTINATION_FILEPATH, file.filename)
-
-        #Store file
-        file.save(sourceFileSystem)
+            return 'newFormat must be MP4, WEBM, AVI, MPEG or WMV', 400
 
         guid = uuid.uuid4().hex + uuid.uuid4().hex
+
+        sourceFileSystem = os.path.join(SOURCE_FILEPATH, f"{guid}.{sourceType}")
+        destinationFileSystem = os.path.join(DESTINATION_FILEPATH,  f"{guid}.{destinationType}")
+
+        #Store file
+        file.save(sourceFileSystem)        
         
         #Create task
-        task = TaskSchema(
+        task = Task(
             file_name = filename,
             source_type = sourceType,
             destination_type = destinationType,
@@ -129,21 +147,10 @@ class ViewTasks(Resource):
             destination_file_system = destinationFileSystem,
             status = "uploaded",
             insert_date = datetime.datetime.now(),
-            uuid = guid
-            #TODO: append user
+            uuid = guid,
+            user = get_jwt_identity()
         )
         db.session.add(task)
         db.session.commit()
-        return {"message": "Task created", "info": task.id}
+        return {"message": "Task created", "info": task.id}  
     
-    @jwt_required()
-    def delete(self, id_task):
-        #Delete task
-        busines_schema = TaskSchema()
-        task_db = busines_schema.dump(TaskSchema.query.filter_by(id=id_task).first())
-        if task_db is None:
-            return 'task not found', 404
-        
-        db.session.delete(task_db)
-        db.session.commit()
-        return {"message": "Task deleted"}

@@ -5,7 +5,8 @@ class VideoFormat(enum.Enum):
     WEBM = 2
     AVI = 3
     MPEG = 4
-    WMV = 5
+    MPG = 5
+    WMV = 6
 
 def validate_format(format): 
     for f in VideoFormat:
