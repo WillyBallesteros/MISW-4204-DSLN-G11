@@ -1,10 +1,11 @@
+import threading
 from flask import Flask, jsonify
 from flask_jwt_extended import JWTManager
 from flask_restful import Api
 from flask_cors import CORS
 from models import db
 from views.views import ViewCreateUser, ViewLogIn, ViewTasks, ViewDownloadVideo, ViewTask
-from services import DATABASE_URL
+from services import queue_service, DATABASE_URL, EVENTS_QUEUE
 
 
 app = Flask(__name__)
@@ -25,6 +26,13 @@ api.add_resource(ViewLogIn, '/api/auth/login')
 api.add_resource(ViewDownloadVideo, '/api/download/<string:uuid>/<string:resource>')
 api.add_resource(ViewTasks, '/api/tasks')
 api.add_resource(ViewTask, '/api/tasks/<int:task_id>')
+
+def run_consumer():
+    queue_service.listener_queue(app, EVENTS_QUEUE)
+
+consumer_thread = threading.Thread(target=run_consumer)
+consumer_thread.start()
+
 
 if __name__ == '__main__':
     app.run(debug=True)

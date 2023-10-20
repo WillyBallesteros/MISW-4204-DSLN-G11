@@ -1,11 +1,4 @@
 flask
-flask-Cors
-flask-JWT-Extended
-flask-JWT
-flask-RESTful
-flask-SQLAlchemy
-marshmallow_sqlalchemy
-psycopg2
-redis
 pika
 python-dotenv
+moviepy

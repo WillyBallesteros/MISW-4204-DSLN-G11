@@ -18,5 +18,5 @@ def email_validation(email):
 def get_extension(filename):
     parts = filename.split('.')
     if len(parts) > 1:
-        return parts[-1].upper()
+        return parts[-1].lower()
     return None
