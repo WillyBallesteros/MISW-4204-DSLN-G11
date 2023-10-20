@@ -5,12 +5,12 @@ from flask_restful import Api
 from flask_cors import CORS
 from models import db
 from views.views import ViewCreateUser, ViewLogIn, ViewTasks, ViewDownloadVideo, ViewTask
-from services import queue_service, DATABASE_URL, EVENTS_QUEUE
+from services import queue_service, DATABASE_URL, EVENTS_QUEUE, JWT_SECRET
 
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-app.config['JWT_SECRET_KEY'] = 'frase-secreta-app'
+app.config['JWT_SECRET_KEY'] = JWT_SECRET
 
 app_context = app.app_context()
 app_context.push()

@@ -142,7 +142,7 @@ class ViewTasks(Resource):
         destinationFileSystem = os.path.join(DESTINATION_FILEPATH,  f"{guid}.{destinationType}")
 
         #Store file
-        file.save(sourceFileSystem)        
+        file.save(sourceFileSystem)
         
         #Create task
         task = Task(
