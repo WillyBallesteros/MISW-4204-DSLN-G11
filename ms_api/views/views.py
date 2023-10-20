@@ -1,12 +1,14 @@
 import datetime
+import json
 import os
 import uuid
 from flask import request, send_file
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from flask_restful import Resource
+from services.queue_service import send_message
 from . import DESTINATION_FILEPATH, SOURCE_FILEPATH
 from models import db, User, UserSchema, Task, TaskSchema
-from services import video
+from services import PROCESS_ID, TASKS_QUEUE, video_service
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils import utils
 import os
@@ -118,7 +120,7 @@ class ViewTasks(Resource):
 
         sourceType = utils.get_extension(filename)
 
-        if not video.validate_format(sourceType):
+        if not video_service.validate_format(sourceType):
             return 'fileName file extensión must be be MP4, WEBM, AVI, MPEG or WMV', 400
         
         #Check destination type
@@ -126,12 +128,12 @@ class ViewTasks(Resource):
         if destinationType is None:
             return 'newFormat cannot be empty', 400
 
-        destinationType = destinationType.upper()
+        destinationType = destinationType.lower()
 
         if sourceType == destinationType:
             return 'newFormat cannot be equal to file format', 400
 
-        if not video.validate_format(destinationType):
+        if not video_service.validate_format(destinationType):
             return 'newFormat must be MP4, WEBM, AVI, MPEG or WMV', 400
 
         guid = uuid.uuid4().hex + uuid.uuid4().hex
@@ -156,6 +158,18 @@ class ViewTasks(Resource):
         )
         db.session.add(task)
         db.session.commit()
+
+        send_message(json.dumps({
+            "source": PROCESS_ID,
+            "action": "RUN_TASK",
+            "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "payload": {
+              "task_id": task.id,
+              "input": sourceFileSystem,
+              "output": destinationFileSystem,
+              "codec": "mpeg4"
+            }
+          }), TASKS_QUEUE)
         return {"message": "Task created", "info": task.id} 
 
 class ViewDownloadVideo(Resource):
@@ -172,8 +186,8 @@ class ViewDownloadVideo(Resource):
         if resource == 'origin':
             return send_file(task_db['source_file_system'], as_attachment=True)
         elif resource == 'destination':
-            if task_db['status'] != "completed":
-                return {"error": "Video processing is not yet completed"}, 400
+            if task_db['status'] != "processed":
+                return {"error": "Video processing is not yet processed"}, 400
             return send_file(task_db['destination_file_system'], as_attachment=True)
         else :
             return 'resource invalid', 404 
