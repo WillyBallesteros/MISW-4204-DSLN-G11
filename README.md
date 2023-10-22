@@ -7,32 +7,25 @@ Proyecto Desarrollo Software en la Nube
 
 ## Requisitos
 
-- Python 3.11.5: Asegúrate de que tienes Python 3.11.5 instalado.
-
-Puedes verificar tu versión de Python ejecutando el siguiente comando:
-
-python --version
-Si no tienes Python 3.11.5 instalado, puedes descargarlo desde python.org.
+- PostgresSQL: en la máquina host debe estar instalado postgresSQL con una base de datos creada. Por defecto se utiliza el ROL postgres con la base de datos cloudb pero se puede cambiar en archivo .env de ms_api
+- RabbitMQ: en la máquina host debe estar instalado el broker de mensajería RabbitMQ instalado
+- Docker Compose: en la máquina host debe estar instalado Docker y Docker Compose
 
 ### Configuración
 Sigue estos pasos para configurar y ejecutar el proyecto:
 
 #### 1. Clona el repositorio
 
-#### 2. Crea un entorno virtual:
+#### 2. Crea la imagen:
 
-python -m venv venv
+docker-compose build
 
-#### 3. Activa el entorno virtual:
+#### 3. Despliega la imagen:
 
-En Windows:
-.\venv\Scripts\activate
+docker-compose up
 
-En macOS/Linux:
-source venv/bin/activate
-
-#### 4. Instala las dependencias del proyecto:
-pip install -r requirements.txt
-
-#### 5. Ejecuta la aplicación
-flask run
+#### 4. Comandos para revisar el estado de los contenedores:
+docker-compose stats: muestra es estado de consumo de los contenedores
+docker-compose ps: lista los servicios
+docker-compose logs ms_api: muestra la salida por consola del servicio ms_api
+docker-compose logs ms_worker: muestra la salida por consola del servicio ms_worker
