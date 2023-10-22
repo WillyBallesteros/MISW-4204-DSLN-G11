@@ -19,13 +19,19 @@ def listener_queue(app, queue_name):
             task_id = data.get('task_id')
             start_process = data.get('start_process')
             end_process = data.get('end_process')
+            ok = data.get('success')
+            print(type(ok), ok)
+
+            message = data.get('message')
             with app.app_context():
                 task = Task.query.filter_by(id=task_id).first()
                 if task: 
                     task.status = "processed"
                     task.start_process_date = datetime.strptime(start_process, '%Y-%m-%d %H:%M:%S.%f')
                     task.finish_process_date = datetime.strptime(end_process, '%Y-%m-%d %H:%M:%S.%f')
-                    task.completed_process_date = datetime.now(),
+                    task.completed_process_date = datetime.now()
+                    task.process_successful = ok
+                    task.process_message = message,
                     db.session.commit()       
 
     channel.basic_consume(queue=queue_name,

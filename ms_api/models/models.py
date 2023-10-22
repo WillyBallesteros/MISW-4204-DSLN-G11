@@ -27,6 +27,8 @@ class Task(db.Model):
     start_process_date = db.Column(db.DateTime)
     finish_process_date = db.Column(db.DateTime)
     completed_process_date = db.Column(db.DateTime)
+    process_successful = db.Column(db.Boolean, default=False)
+    process_message = db.Column(db.String(2000))
     user = db.Column(db.Integer, db.ForeignKey('user.id'))
     uuid = db.Column(db.String(64), nullable=False)
 
