@@ -14,7 +14,7 @@ def listener_queue(app, queue_name):
         print(f"Received event: {body}.")
         bodyData = json.loads(body)
         event = bodyData.get('event')
-        if event == "ENDED_TASK":
+        if event == "TASK_COMPLETED":
             data = bodyData.get('payload')
             task_id = data.get('task_id')
             start_process = data.get('start_process')
@@ -23,8 +23,9 @@ def listener_queue(app, queue_name):
                 task = Task.query.filter_by(id=task_id).first()
                 if task: 
                     task.status = "processed"
-                    task.start_process_date = datetime.strptime(start_process, '%Y-%m-%d %H:%M:%S').date()
-                    task.finish_process_date = datetime.strptime(end_process, '%Y-%m-%d %H:%M:%S').date()
+                    task.start_process_date = datetime.strptime(start_process, '%Y-%m-%d %H:%M:%S.%f')
+                    task.finish_process_date = datetime.strptime(end_process, '%Y-%m-%d %H:%M:%S.%f')
+                    task.completed_process_date = datetime.now(),
                     db.session.commit()       
 
     channel.basic_consume(queue=queue_name,

@@ -140,6 +140,7 @@ class ViewTasks(Resource):
 
         sourceFileSystem = os.path.join(SOURCE_FILEPATH, f"{guid}.{sourceType}")
         destinationFileSystem = os.path.join(DESTINATION_FILEPATH,  f"{guid}.{destinationType}")
+        codec = video_service.get_codec(destinationType)
 
         #Store file
         file.save(sourceFileSystem)
@@ -161,13 +162,13 @@ class ViewTasks(Resource):
 
         send_message(json.dumps({
             "source": PROCESS_ID,
-            "action": "RUN_TASK",
-            "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "action": "NEW_TASK",
+            "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
             "payload": {
               "task_id": task.id,
               "input": sourceFileSystem,
               "output": destinationFileSystem,
-              "codec": "mpeg4"
+              "codec": codec
             }
           }), TASKS_QUEUE)
         return {"message": "Task created", "info": task.id} 

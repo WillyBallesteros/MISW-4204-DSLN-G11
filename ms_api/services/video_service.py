@@ -13,3 +13,13 @@ def validate_format(format):
         if f.name == format:
             return True
     return False
+
+
+def get_codec(destination_format):
+    if format == "webm":
+        return "libvpx"
+    
+    if format == "wmv":
+        return "wmv2"
+    
+    return "mpeg4"
