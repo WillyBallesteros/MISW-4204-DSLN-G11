@@ -1,0 +1,24 @@
+version: '3'
+services:
+  ms_api:
+    build:
+      context: ./ms_api
+    ports:
+      - "5001:5000"
+    env_file:
+      - ./ms_api/.env
+    volumes:
+      - ./ms_api:/app
+      - ./video_files:/app/video_files
+  ms_worker:
+    build:
+      context: ./ms_worker
+    env_file:
+      - ./ms_worker/.env
+    volumes:
+      - ./ms_worker:/app
+      - ./video_files:/app/video_files
+
+
+
+
