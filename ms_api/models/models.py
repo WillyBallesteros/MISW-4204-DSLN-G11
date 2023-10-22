@@ -26,6 +26,7 @@ class Task(db.Model):
     insert_date = db.Column(db.DateTime, default=datetime.now)
     start_process_date = db.Column(db.DateTime)
     finish_process_date = db.Column(db.DateTime)
+    completed_process_date = db.Column(db.DateTime)
     user = db.Column(db.Integer, db.ForeignKey('user.id'))
     uuid = db.Column(db.String(64), nullable=False)
 

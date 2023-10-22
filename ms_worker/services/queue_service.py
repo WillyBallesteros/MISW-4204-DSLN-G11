@@ -15,7 +15,7 @@ def listener_queue(queue_name):
         print(f"Received task: {body}.")
         bodyData = json.loads(body)
         action = bodyData.get('action')
-        if action == "RUN_TASK":
+        if action == "NEW_TASK":
           data = bodyData.get('payload')
           input = data.get('input')
           output = data.get('output')
@@ -25,9 +25,9 @@ def listener_queue(queue_name):
             print(f"Task {task_id} was previously deleted ")  
             return
           
-          start_process = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+          start_process = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
           error = convert_video(input, output, codec)
-          end_process = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+          end_process = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
           message = ""
           success = True
           if error != None:
@@ -36,8 +36,8 @@ def listener_queue(queue_name):
 
           send_message(json.dumps({
             "source": PROCESS_ID,
-            "event": "ENDED_TASK",
-            "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "event": "TASK_COMPLETED",
+            "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
             "payload": {
               "task_id": task_id,
               "success": success,
