@@ -4,10 +4,10 @@ import json
 from flask import current_app
 import datetime
 from services.video_service import convert_video
-from . import RABBITMQ_HOST, EVENTS_QUEUE, PROCESS_ID
+from . import RABBITMQ_HOST, EVENTS_QUEUE, PROCESS_ID, RABBITMQ_TIMEOUT
 
 def listener_queue(queue_name):
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, heartbeat=RABBITMQ_TIMEOUT))
     channel = connection.channel()
     channel.queue_declare(queue=queue_name)
 
@@ -56,7 +56,7 @@ def listener_queue(queue_name):
 
 def send_message(message, queue_name):
     print(f"Send {message} to {queue_name}")
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, heartbeat=RABBITMQ_TIMEOUT))
     channel = connection.channel()
     
     channel.queue_declare(queue=queue_name)
