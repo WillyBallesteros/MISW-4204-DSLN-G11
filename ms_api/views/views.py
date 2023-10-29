@@ -10,7 +10,7 @@ from . import DESTINATION_FILEPATH, SOURCE_FILEPATH
 from models import db, User, UserSchema, Task, TaskSchema
 from services import PROCESS_ID, TASKS_QUEUE, video_service
 from werkzeug.security import generate_password_hash, check_password_hash
-from utils import utils
+from utils import utils, check_exists
 import os
 
 
@@ -143,7 +143,8 @@ class ViewTasks(Resource):
         codec = video_service.get_codec(destinationType)
 
         #Store file
-        file.save(sourceFileSystem)
+        if check_exists("X-header-database", request.headers.items()) is None:
+            file.save(sourceFileSystem)
         
         #Create task
         task = Task(
@@ -160,17 +161,18 @@ class ViewTasks(Resource):
         db.session.add(task)
         db.session.commit()
 
-        send_message(json.dumps({
-            "source": PROCESS_ID,
-            "action": "NEW_TASK",
-            "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
-            "payload": {
-              "task_id": task.id,
-              "input": sourceFileSystem,
-              "output": destinationFileSystem,
-              "codec": codec
-            }
-          }), TASKS_QUEUE)
+        if check_exists("X-header-database", request.headers.items()) is None and check_exists("x-header-database-filesystem", request.headers.items()) is None:
+            send_message(json.dumps({
+                "source": PROCESS_ID,
+                "action": "NEW_TASK",
+                "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
+                "payload": {
+                "task_id": task.id,
+                "input": sourceFileSystem,
+                "output": destinationFileSystem,
+                "codec": codec
+                }
+            }), TASKS_QUEUE)
         return {"message": "Task created", "info": task.id} 
 
 class ViewDownloadVideo(Resource):
