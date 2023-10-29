@@ -20,3 +20,10 @@ def get_extension(filename):
     if len(parts) > 1:
         return parts[-1].lower()
     return None
+
+def check_exists(item, items):
+    item = item.lower()
+    for key, value in items:
+        if key.lower() == item:
+            return value
+    return None
