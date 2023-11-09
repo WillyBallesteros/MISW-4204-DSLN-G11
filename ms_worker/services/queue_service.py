@@ -2,9 +2,10 @@ import os
 import pika
 import json
 from flask import current_app
+from google.cloud import storage
 import datetime
 from services.video_service import convert_video
-from . import RABBITMQ_HOST, EVENTS_QUEUE, PROCESS_ID, RABBITMQ_TIMEOUT
+from . import RABBITMQ_HOST, EVENTS_QUEUE, PROCESS_ID, RABBITMQ_TIMEOUT, TMP_PATH
 
 def listener_queue(queue_name):
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, heartbeat=RABBITMQ_TIMEOUT))
@@ -26,7 +27,27 @@ def listener_queue(queue_name):
             return
           
           start_process = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-          error = convert_video(input, output, codec)
+
+          bucket = input.split('/')[3]
+          inputBucket = input.split('/')[4]
+          inputPath = f"{TMP_PATH}/{inputBucket}"
+          storage_client = storage.Client()
+          bucket = storage_client.get_bucket(bucket)
+          source_blob = bucket.blob(inputBucket)
+          source_blob.download_to_filename(inputPath)
+
+          outputBucket = output.split('/')[4]
+          outputPath = f"{TMP_PATH}/{outputBucket}"
+          
+          error = convert_video(inputPath, outputPath, codec)
+          os.remove(inputPath)
+        
+          if error != None:
+            new_blob = bucket.blob(outputBucket)
+            new_blob.upload_from_filename(outputPath)
+            new_blob.make_public()
+            os.remove(outputPath)
+
           end_process = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
           message = ""
           success = True

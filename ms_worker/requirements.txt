@@ -2,3 +2,4 @@ flask
 pika
 python-dotenv
 moviepy
+google.cloud

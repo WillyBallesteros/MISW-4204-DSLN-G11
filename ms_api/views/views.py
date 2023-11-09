@@ -6,11 +6,12 @@ from flask import request, send_file
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from flask_restful import Resource
 from services.queue_service import send_message
-from . import DESTINATION_FILEPATH, SOURCE_FILEPATH
+from . import DESTINATION_FILEPATH, SOURCE_FILEPATH, BUCKET_NAME
 from models import db, User, UserSchema, Task, TaskSchema
 from services import PROCESS_ID, TASKS_QUEUE, video_service
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils import utils, check_exists
+from google.cloud import storage
 import os
 
 
@@ -137,14 +138,20 @@ class ViewTasks(Resource):
             return 'newFormat must be MP4, WEBM, AVI, MPEG or WMV', 400
 
         guid = uuid.uuid4().hex + uuid.uuid4().hex
+        sourceName = f"{guid}.{sourceType}"
+        destinationName = f"{guid}.{destinationType}"
 
-        sourceFileSystem = os.path.join(SOURCE_FILEPATH, f"{guid}.{sourceType}")
-        destinationFileSystem = os.path.join(DESTINATION_FILEPATH,  f"{guid}.{destinationType}")
+        destinationFileSystem = f"https://storage.googleapis.com/{BUCKET_NAME}/{destinationName}"
         codec = video_service.get_codec(destinationType)
 
-        #Store file
+        sourceFileSystem = sourceName
         if check_exists("X-header-database", request.headers.items()) is None:
-            file.save(sourceFileSystem)
+            storage_client = storage.Client()
+            bucket = storage_client.get_bucket(BUCKET_NAME)
+            blob = bucket.blob(sourceName)
+            blob.upload_from_string(file.read(), content_type=file.content_type)
+            blob.make_public()
+            sourceFileSystem = blob.public_url
         
         #Create task
         task = Task(

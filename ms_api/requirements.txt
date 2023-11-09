@@ -8,3 +8,4 @@ marshmallow_sqlalchemy
 psycopg2
 pika
 python-dotenv
+google.cloud
