@@ -13,27 +13,10 @@ Proyecto Desarrollo Software en la Nube entrega 2
 ### Configuración
 Sigue estos pasos para configurar y ejecutar el proyecto:
 
-#### 1. Configurar servidor NFS
-1. Acceder por ssh a la instancia file-server
-2. Instalar el servidor de archivos:
-```
-  sudo apt update
-  sudo apt install nfs-kernel-server  
-```
-3. Crear las carpetas compartidas:
-```
-  mkdir -p $HOME/video_files/source 
-  mkdir -p $HOME/video_files/destination 
-```
-4. Configurar el archivo /etc/export agregando la línea:
-```
-  /RUTA_BASE/video_files *(rw,sync,no_subtree_check,all_squash,anonuid=65534,anongid=65534)
-```
-5. Actualizar los campos con:
-```
-  sudo exportfs -a
-  sudo systemctl restart nfs-kernel-serve
-```
+#### 1. Configurar Cloud Storage
+1. Crear un nuevo bucket llamado misw-4204_video_files
+2. Desmarcar la opción de protección para acceso público
+3. Modificar el tipo de permisos para que permita una granularidad fina
 #### 2. Configurar RabbitMQ
 1. Acceder por ssh a la instancia rabbit-mq
 2. Instalar y configurar el broker de mensajería:
@@ -50,8 +33,8 @@ Sigue estos pasos para configurar y ejecutar el proyecto:
 3. Habilitar monitoreo:
    sudo rabbitmq-plugins enable rabbitmq_management
    sudo systemctl restart rabbitmq-server
-#### 3. Configurar servidor web:
-1. Instalar requerimientos (docker, nginx y client nfs):
+#### 3. Crear y configurar el grupo de servidor web:
+1. En una instancia, instalar requerimientos (docker, nginx y client nfs):
 ```
   sudo apt install nginx
   sudo systemctl status nginx
@@ -65,19 +48,14 @@ Sigue estos pasos para configurar y ejecutar el proyecto:
   sudo apt install nfs-common
 ```
 2. Clonar el repositorio
-3. Montar en forma permanente el volumen compartido editando el archivo /etc/fstab
-```
-  Agregar la línea: IP_NFS_SERVER:/RUTA_BASE/video_files /RUTA_BASE/MISW-4204-DSLN-G11/video_files nfs defaults 0 0
-  Ejecutar: sudo mount -a
-```
-4. De ser necesario, actualizar el archivo .env
-5. Construir y ejecutar imagen docker:
+3. De ser necesario, actualizar el archivo .env
+4. Construir y ejecutar imagen docker:
 ```
   cd /RUTA_BASE/MISW-4204-DSLN-G11/ms_api
   sudo docker build -t web_server:tag .
-  sudo docker run -d -p 5000:5000 --name web_server -v /RUTA_BASE/MISW-4204-DSLN-G11/ms_api:/app -v /RUTA_BASE/MISW-4204-DSLN-G11/video_files:/app/video_files web_server:tag
+  sudo docker run --restart always -p 127.0.0.1:5000:5000 --name web_server -v /RUTA_BASE/MISW-4204-DSLN-G11/ms_api:/app web_server:tag
 ```
-6. Configurar nginx como proxy inverso:
+5. Configurar nginx como proxy inverso:
 ```
   Editar con  /etc/nginx/sites-enabled/default:
   server {
@@ -97,7 +75,14 @@ Sigue estos pasos para configurar y ejecutar el proyecto:
     sudo nginx -t
     sudo systemctl restart nginx
 ```
-#### 4. Configurar worker:
+6. Apagar la instancia y desde la opción de consola crear un grupo llamado web-server-grup a partir de la instancia
+7. Configurar las poíticas de escalamiento.
+#### 4. Configurar el Load Balancer:
+1. Crear un load balancer del tipo Classic Application Load Balancer
+2. Configurar en front-end indicando que las paticiones son por http al puerto 80
+3. Crear y configurar un health check a la ruta /api/health
+4. Configurar el backend para que apunte al grupo web-server-group
+#### 5. Configurar worker:
 1. Instalar requerimientos (docker y client nfs):
 ```
   sudo apt install apt-transport-https ca-certificates curl software-properties-common
@@ -108,16 +93,9 @@ Sigue estos pasos para configurar y ejecutar el proyecto:
   sudo apt install nfs-common
 ```
 2. Clonar el repositorio
-3. Montar en forma permanente el volumen compartido editando el archivo /etc/fstab
-```
-  Agregar la línea: 
-    IP_NFS_SERVER:/RUTA_BASE/video_files /RUTA_BASE/MISW-4204-DSLN-G11/video_files nfs defaults 0 0
-  Ejecutar: 
-    sudo mount -a
-```
-4. Construir y ejecutar imagen docker:
+3. Construir y ejecutar imagen docker:
 ```
   cd /RUTA_BASE/MISW-4204-DSLN-G11/ms_worker
   sudo docker build -t worker:tag .
-  sudo docker run -d -p 5000:5000 --name worker -v /RUTA_BASE/MISW-4204-DSLN-G11/worker:/app -v /RUTA_BASE/MISW-4204-DSLN-G11/video_files:/app/video_files worker:tag
+  sudo docker run --restart always -d --name worker -v /RUTA_BASE/MISW-4204-DSLN-G11/ms_worker:/app -v /RUTA_BASE/MISW-4204-DSLN-G11/tmp:/app/tmp worker:tag
 ```

@@ -2,18 +2,26 @@ import datetime
 import json
 import os
 import uuid
-from flask import request, send_file
+from flask import request, send_file, make_response
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from flask_restful import Resource
 from services.queue_service import send_message
-from . import DESTINATION_FILEPATH, SOURCE_FILEPATH
+from . import DESTINATION_FILEPATH, SOURCE_FILEPATH, BUCKET_NAME
 from models import db, User, UserSchema, Task, TaskSchema
 from services import PROCESS_ID, TASKS_QUEUE, video_service
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils import utils, check_exists
+from google.cloud import storage
 import os
 
-
+class ViewHealth(Resource):
+    # health
+    def get(self):
+        response = make_response('OK', 200)
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
 
 class ViewLogIn(Resource):
     # login
@@ -85,8 +93,8 @@ class ViewTask(Resource):
         task_schema = TaskSchema()
         task = task_schema.dump(Task.query.get_or_404(task_id))
 
-        task['origin_download_link']= '/api/download/'+ task['uuid']+"/origin"
-        task['destination_download_link']= '/api/download/'+ task['uuid']+"/destination"
+        task['origin_download_link']= task['source_file_system']
+        task['destination_download_link']= task['destination_file_system']
         return task
     
     @jwt_required()
@@ -95,13 +103,22 @@ class ViewTask(Resource):
         task = Task.query.filter_by(id=task_id).first()
         if task is None:
             return 'task not found', 404
+
+        bucket = task.source_file_system.split('/')[3]
+        sourceFileBucket = task.source_file_system.split('/')[4]        
+        destinationFileBucket = task.destination_file_system.split('/')[4]
+
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(bucket)
         
-        if os.path.exists(task.source_file_system):
-            os.remove(task.source_file_system)
+        source_blob = bucket.blob(sourceFileBucket)
+        if source_blob.exists():
+            source_blob.delete()
         
-        if os.path.exists(task.destination_file_system):
-            os.remove(task.destination_file_system)
-        
+        destination_blob = bucket.blob(destinationFileBucket)
+        if destination_blob.exists():
+            destination_blob.delete()
+
         db.session.delete(task)
         db.session.commit()
 
@@ -137,14 +154,20 @@ class ViewTasks(Resource):
             return 'newFormat must be MP4, WEBM, AVI, MPEG or WMV', 400
 
         guid = uuid.uuid4().hex + uuid.uuid4().hex
+        sourceName = f"{guid}.{sourceType}"
+        destinationName = f"{guid}.{destinationType}"
 
-        sourceFileSystem = os.path.join(SOURCE_FILEPATH, f"{guid}.{sourceType}")
-        destinationFileSystem = os.path.join(DESTINATION_FILEPATH,  f"{guid}.{destinationType}")
+        destinationFileSystem = f"https://storage.googleapis.com/{BUCKET_NAME}/{destinationName}"
         codec = video_service.get_codec(destinationType)
 
-        #Store file
+        sourceFileSystem = sourceName
         if check_exists("X-header-database", request.headers.items()) is None:
-            file.save(sourceFileSystem)
+            storage_client = storage.Client()
+            bucket = storage_client.get_bucket(BUCKET_NAME)
+            blob = bucket.blob(sourceName)
+            blob.upload_from_string(file.read(), content_type=file.content_type)
+            blob.make_public()
+            sourceFileSystem = blob.public_url
         
         #Create task
         task = Task(
