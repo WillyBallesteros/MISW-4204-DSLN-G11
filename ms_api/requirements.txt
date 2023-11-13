@@ -5,7 +5,7 @@ flask-JWT
 flask-RESTful
 flask-SQLAlchemy
 marshmallow_sqlalchemy
-psycopg2
 pika
 python-dotenv
-google.cloud
+google-cloud-storage
+psycopg2-binary

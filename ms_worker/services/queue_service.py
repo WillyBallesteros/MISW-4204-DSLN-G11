@@ -22,9 +22,9 @@ def listener_queue(queue_name):
           output = data.get('output')
           codec = data.get('codec')
           task_id = data.get('task_id')
-          if not os.path.exists(input):
-            print(f"Task {task_id} was previously deleted ")  
-            return
+          #if not os.path.exists(input):
+          #  print(f"Task {task_id} was previously deleted ")  
+          #  return
           
           start_process = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
 
@@ -34,6 +34,10 @@ def listener_queue(queue_name):
           storage_client = storage.Client()
           bucket = storage_client.get_bucket(bucket)
           source_blob = bucket.blob(inputBucket)
+          if not source_blob.exists():
+            print(f"Task {task_id} was previously deleted ")  
+            return
+
           source_blob.download_to_filename(inputPath)
 
           outputBucket = output.split('/')[4]
@@ -42,7 +46,7 @@ def listener_queue(queue_name):
           error = convert_video(inputPath, outputPath, codec)
           os.remove(inputPath)
         
-          if error != None:
+          if error is None:
             new_blob = bucket.blob(outputBucket)
             new_blob.upload_from_filename(outputPath)
             new_blob.make_public()
