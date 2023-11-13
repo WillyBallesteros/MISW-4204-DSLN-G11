@@ -3,12 +3,13 @@
 
 # Proyecto
 
-Proyecto Desarrollo Software en la Nube entrega 2
+Proyecto Desarrollo Software en la Nube entrega 3
 
 ## Requisitos
 
-- Acceso por SSH a 5 instancias ubuntu 20 de gcloud para desplegar los servicio requeridos (no se incluye la llave en el repositorio pero está disponible para verificación)
-- Tener creada una base de datos Cloud SQL de tipo postgres 14 con la conexión privada abierta 
+- Acceso por SSH a 3 instancias ubuntu 20 de gcloud para desplegar los servicio requeridos (no se incluye la llave en el repositorio pero está disponible para verificación)
+- Tener creada una base de datos Cloud SQL de tipo postgres 14 con la conexión privada abierta
+- Tener acceso a cloud storage 
 
 ### Configuración
 Sigue estos pasos para configurar y ejecutar el proyecto:
