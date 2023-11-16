@@ -1,18 +1,19 @@
 import os
-import pika
 import json
-from flask import current_app
 from google.cloud import storage
 import datetime
 from services.video_service import convert_video
-from . import RABBITMQ_HOST, EVENTS_QUEUE, PROCESS_ID, RABBITMQ_TIMEOUT, TMP_PATH
+from google.cloud import pubsub_v1
+from . import PROJECT_ID, EVENTS_TOPIC, PROCESS_ID, TMP_PATH
 
-def listener_queue(queue_name):
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, heartbeat=RABBITMQ_TIMEOUT))
-    channel = connection.channel()
-    channel.queue_declare(queue=queue_name)
+publisher = pubsub_v1.PublisherClient()
+subscriber = pubsub_v1.SubscriberClient()
 
-    def callback(ch, method, properties, body):
+def listener_queue(subscription_id):
+    subscription_path = subscriber.subscription_path(PROJECT_ID, subscription_id)
+    def callback(message):
+        message.modify_ack_deadline(300)
+        body = message.data.decode("utf-8")
         print(f"Received task: {body}.")
         bodyData = json.loads(body)
         action = bodyData.get('action')
@@ -22,9 +23,6 @@ def listener_queue(queue_name):
           output = data.get('output')
           codec = data.get('codec')
           task_id = data.get('task_id')
-          #if not os.path.exists(input):
-          #  print(f"Task {task_id} was previously deleted ")  
-          #  return
           
           start_process = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
 
@@ -70,23 +68,21 @@ def listener_queue(queue_name):
               "start_process": start_process,
               "end_process": end_process,
             }
-          }), EVENTS_QUEUE)
+          }), EVENTS_TOPIC)
 
-    channel.basic_consume(queue=queue_name,
-                          on_message_callback=callback,
-                          auto_ack=True)
+        message.ack()
 
-    print(f" [*] Waiting for tasks in queue: {queue_name}. To exit press CTRL+C")
-    channel.start_consuming()
-
-def send_message(message, queue_name):
-    print(f"Send {message} to {queue_name}")
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, heartbeat=RABBITMQ_TIMEOUT))
-    channel = connection.channel()
-    
-    channel.queue_declare(queue=queue_name)
-    channel.basic_publish(exchange='',
-            routing_key=queue_name,
-            body=message)
-    
-    connection.close()
+    streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
+    print(f" [*] Waiting for events in topic: {subscription_path}.")
+    try:
+        streaming_pull_future.result()
+    except KeyboardInterrupt as e:
+        print(f"Subscription failed: {e}")
+        streaming_pull_future.cancel()
+        
+def send_message(message, topic_id):
+    topic_path = publisher.topic_path(PROJECT_ID, topic_id)
+    data = data.encode("utf-8")
+    future = publisher.publish(topic_path, data)
+    message_id = future.result()
+    print(f"Send {data} to {topic_path} with message_id = {message_id}")

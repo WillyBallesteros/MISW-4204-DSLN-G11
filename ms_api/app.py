@@ -5,7 +5,7 @@ from flask_restful import Api
 from flask_cors import CORS
 from models import db
 from views.views import ViewHealth, ViewCreateUser, ViewLogIn, ViewTasks, ViewDownloadVideo, ViewTask
-from services import queue_service, DATABASE_URL, EVENTS_QUEUE, JWT_SECRET
+from services import queue_service, DATABASE_URL, EVENTS_TOPIC, JWT_SECRET
 
 
 app = Flask(__name__)
@@ -29,7 +29,7 @@ api.add_resource(ViewTasks, '/api/tasks')
 api.add_resource(ViewTask, '/api/tasks/<int:task_id>')
 
 def run_consumer():
-    queue_service.listener_queue(app, EVENTS_QUEUE)
+    queue_service.listener_queue(app, EVENTS_TOPIC)
 
 consumer_thread = threading.Thread(target=run_consumer)
 consumer_thread.start()

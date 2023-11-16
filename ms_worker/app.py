@@ -1,4 +1,4 @@
-from services import queue_service, TASKS_QUEUE
+from services import queue_service, TASKS_TOPIC
 from flask import Flask
 import os
 import threading
@@ -6,7 +6,7 @@ import threading
 app = Flask(__name__)
 
 def run_consumer():
-    queue_service.listener_queue(TASKS_QUEUE)
+    queue_service.listener_queue(TASKS_TOPIC)
 
 consumer_thread = threading.Thread(target=run_consumer)
 consumer_thread.start()

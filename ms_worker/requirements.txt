@@ -1,5 +1,5 @@
 flask
-pika
 python-dotenv
 moviepy
 google-cloud-storage
+google-cloud-pubsub
