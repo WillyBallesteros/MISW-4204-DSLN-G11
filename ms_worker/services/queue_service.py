@@ -1,9 +1,11 @@
 import os
 import json
+import concurrent.futures
 from google.cloud import storage
 import datetime
 from services.video_service import convert_video
 from google.cloud import pubsub_v1
+from google.cloud.pubsub_v1.subscriber.scheduler import ThreadScheduler
 from . import PROJECT_ID, EVENTS_TOPIC, PROCESS_ID, TMP_PATH
 
 publisher = pubsub_v1.PublisherClient()
@@ -11,6 +13,9 @@ subscriber = pubsub_v1.SubscriberClient()
 
 def listener_queue(subscription_id):
     subscription_path = subscriber.subscription_path(PROJECT_ID, subscription_id)
+    flow_control = pubsub_v1.types.FlowControl(max_messages=1)
+    scheduler = ThreadScheduler(executor=concurrent.futures.ThreadPoolExecutor(max_workers=1))
+
     def callback(message):
         message.modify_ack_deadline(300)
         body = message.data.decode("utf-8")
@@ -51,10 +56,10 @@ def listener_queue(subscription_id):
             os.remove(outputPath)
 
           end_process = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-          message = ""
+          msg = ""
           success = True
           if error != None:
-              message = str(error)
+              msg = str(error)
               success = False
 
           send_message(json.dumps({
@@ -64,7 +69,7 @@ def listener_queue(subscription_id):
             "payload": {
               "task_id": task_id,
               "success": success,
-              "message": message,
+              "message": msg,
               "start_process": start_process,
               "end_process": end_process,
             }
@@ -72,7 +77,8 @@ def listener_queue(subscription_id):
 
         message.ack()
 
-    streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
+    streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback, flow_control=flow_control, scheduler=scheduler)
+
     print(f" [*] Waiting for events in topic: {subscription_path}.")
     try:
         streaming_pull_future.result()
@@ -80,7 +86,7 @@ def listener_queue(subscription_id):
         print(f"Subscription failed: {e}")
         streaming_pull_future.cancel()
         
-def send_message(message, topic_id):
+def send_message(data, topic_id):
     topic_path = publisher.topic_path(PROJECT_ID, topic_id)
     data = data.encode("utf-8")
     future = publisher.publish(topic_path, data)
