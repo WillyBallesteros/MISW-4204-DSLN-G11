@@ -8,7 +8,7 @@ from flask_restful import Resource
 from services.queue_service import send_message
 from . import DESTINATION_FILEPATH, SOURCE_FILEPATH, BUCKET_NAME
 from models import db, User, UserSchema, Task, TaskSchema
-from services import PROCESS_ID, TASKS_QUEUE, video_service
+from services import PROCESS_ID, TASKS_TOPIC, video_service
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils import utils, check_exists
 from google.cloud import storage
@@ -195,7 +195,7 @@ class ViewTasks(Resource):
                 "output": destinationFileSystem,
                 "codec": codec
                 }
-            }), TASKS_QUEUE)
+            }), TASKS_TOPIC)
         return {"message": "Task created", "info": task.id} 
 
 class ViewDownloadVideo(Resource):
