@@ -1,4 +1,5 @@
 flask
+flask-RESTful
 python-dotenv
 moviepy
 google-cloud-storage
