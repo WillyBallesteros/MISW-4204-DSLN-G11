@@ -7,8 +7,8 @@ Proyecto Desarrollo Software en la Nube entrega 3
 
 ## Requisitos
 
-- Acceso por SSH a 2 instancias ubuntu 20 de gcloud para desplegar los servicio requeridos (no se incluye la llave en el repositorio pero está disponible para verificación)
-- Tener creada una base de datos Cloud SQL de tipo postgres 14 con la conexión privada abierta
+- Acceso a cloud run y artifact registry
+- Tener creada una base de datos Cloud SQL de tipo postgres 14
 - Tener acceso a cloud storage 
 - Tener acceso a pub/sub storage
 
@@ -23,71 +23,28 @@ Sigue estos pasos para configurar y ejecutar el proyecto:
 1. Acceder al servicio de pub/sub
 2. Crear los tópicos EVENTS y TASKS, deshabilitando la opción de crear suscriptor por defecto.
 3. Crear las subscripciones EVENTS y TASKS en modo pull y con un deadline de ack de 300 segundos  
-#### 3. Crear y configurar el grupo de servidor web:
-1. En una instancia, instalar requerimientos (docker, nginx y client nfs):
+#### 3. Configurar Artifact Registry
+1. Crear un repositorio en artifact registry llamado container-ws
+2. Copiar la ruta del recurso
+#### 4. Crear y configurar el servicio de servidor web en cloud run:
+1. En cloud shell ejecutar
 ```
-  sudo apt install nginx
-  sudo systemctl status nginx
-  sudo systemctl start nginx
-  sudo ufw allow 'Nginx HTTP'
-  sudo apt install apt-transport-https ca-certificates curl software-properties-common
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-  sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
-  sudo apt update
-  sudo apt install docker-ce
-  sudo apt install nfs-common
+  git clone https://github.com/WillyBallesteros/MISW-4204-DSLN-G11.git
+  cd MISW-4204-DSLN-G11/ms_api
+  docker build -t us-docker.pkg.dev/tfg-demo-318500/container-ws/web_server .
+  docker push us-docker.pkg.dev/tfg-demo-318500/container-ws/web_server
 ```
-2. Clonar el repositorio
-3. De ser necesario, actualizar el archivo .env
-4. Construir y ejecutar imagen docker:
+2. Habilitar los permisos requeridos en AIM en el usuario utilizado por google cloud run para acceso a Pub/Sub, Storage y Cloud SQL
+3. Habilitar el acceso desde el servicio a CLoud SQL
+4. Configurar el servicio con 2 cpu , 2 gb de memoria ram y las politicas de escalamiento
+5. Crear el servicio
+#### 5. Crear y configurar el servicio de worker en cloud run:
+1. En cloud shell ejecutar
 ```
-  cd /RUTA_BASE/MISW-4204-DSLN-G11/ms_api
-  sudo docker build -t web_server:tag .
-  sudo docker run --restart always -p 127.0.0.1:5000:5000 --name web_server -v /RUTA_BASE/MISW-4204-DSLN-G11/ms_api:/app web_server:tag
+  git clone https://github.com/WillyBallesteros/MISW-4204-DSLN-G11.git
+  cd MISW-4204-DSLN-G11/ms_worker
+  docker build -t us-docker.pkg.dev/tfg-demo-318500/container-ws/worker .
+  docker push us-docker.pkg.dev/tfg-demo-318500/container-ws/worker
 ```
-5. Configurar nginx como proxy inverso:
-```
-  Editar con  /etc/nginx/sites-enabled/default:
-  server {
-    listen 80;
-    server_name _;
-
-    location / {
-        proxy_pass http://localhost:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-  }
-
-  Ejecutar:
-    sudo nginx -t
-    sudo systemctl restart nginx
-```
-6. Apagar la instancia y desde la opción de consola crear un grupo llamado web-server-grup a partir de la instancia
-7. Configurar las políticas de escalamiento.
-#### 4. Configurar el Load Balancer:
-1. Crear un load balancer del tipo Classic Application Load Balancer
-2. Configurar en front-end indicando que las paticiones son por http al puerto 80
-3. Crear y configurar un health check a la ruta /api/health
-4. Configurar el backend para que apunte al grupo web-server-group
-#### 5. Crear y configurar el grupo de servidor web:
-1. Instalar requerimientos (docker y client nfs):
-```
-  sudo apt install apt-transport-https ca-certificates curl software-properties-common
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-  sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
-  sudo apt update
-  sudo apt install docker-ce
-  sudo apt install nfs-common
-```
-2. Clonar el repositorio
-3. Construir y ejecutar imagen docker:
-```
-  cd /RUTA_BASE/MISW-4204-DSLN-G11/ms_worker
-  sudo docker build -t worker:tag .
-  sudo docker run --restart always -d --name worker -v /RUTA_BASE/MISW-4204-DSLN-G11/ms_worker:/app -v /RUTA_BASE/MISW-4204-DSLN-G11/tmp:/app/tmp worker:tag
-```
-4. Apagar la instancia y desde la opción de consola crear un grupo llamado web-server-grup a partir de la instancia
-5. Configurar las políticas de escalamiento.
+2. Configurar el servicio con 2 cpu siempre asignados de 2da generación, 2 gb de memoria ram y las politicas de escalamiento
+3. Crear el servicio
